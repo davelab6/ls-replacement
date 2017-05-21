@@ -223,48 +223,48 @@ class File(object):
     def print_gitstatus(self):
         for char in self.gitstatus:
             if char == 'M':
-                print(ColorString(char, fg='red', frmt='bold'), end = '')
+                print(ColorString(char, fg='red', frmt='bold'), end='')
             elif char == 'A':
-                print(ColorString(char, fg='green', frmt='bold'), end = '')
+                print(ColorString(char, fg='green', frmt='bold'), end='')
             elif char == 'D':
-                print(ColorString(char, fg='red', frmt='bold'), end = '')
+                print(ColorString(char, fg='red', frmt='bold'), end='')
             elif char == 'R':
-                print(ColorString(char, fg='yellow', frmt='bold'), end = '')
+                print(ColorString(char, fg='yellow', frmt='bold'), end='')
             elif char == 'C':
-                print(ColorString(char, fg='cyan', frmt='bold'), end = '')
+                print(ColorString(char, fg='cyan', frmt='bold'), end='')
             elif char == 'U':
-                print(ColorString(char, fg='green', frmt='bold'), end = '')
+                print(ColorString(char, fg='green', frmt='bold'), end='')
             elif char == '!' or char == '?':
-                print(ColorString(char, fg='normal', frmt='faint'), end = '')
+                print(ColorString(char, fg='normal', frmt='faint'), end='')
             else:
-                print(ColorString(char, fg='normal', frmt='bold'), end = '')
+                print(ColorString(char, fg='normal', frmt='bold'), end='')
 
     def print_name(self):
-        # print(self.type + ": ", end = '')
+        # print(self.type + ": ", end='')
         if self.type == 'directory':
-            print(ColorString(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end='')
         elif self.type == 'symlink':
-            print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
             if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end = '')
+                print(ColorString('/', fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
 
 
 
         elif self.type == 'executable':
-            print(ColorString(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end='')
         elif self.type == 'text':
-            print(ColorString(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end='')
         else:
             print(self.name, end='')
 
     def print_size(self):
-        print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end = '')
-        print(' ', end = '')
-        print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end = '')
+        print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end='')
+        print(' ', end='')
+        print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end='')
 
     def print_postfix(self, spaceleft, listing = True):
         if self.type == 'directory':
-            print(ColorString('/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
+            print(ColorString('/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end='')
             contents = [str(filename) for filename in os.listdir(self.name)]
             contents.sort()
 
@@ -275,7 +275,7 @@ class File(object):
                     break
 
             if Config.dir_listing and not is_empty:
-                print(' ', end = '')
+                print(' ', end='')
 
                 files_string = ''
                 numfiles = 0
@@ -292,9 +292,9 @@ class File(object):
                 if numfiles == 1: cumulative_length -= 1
 
                 if '.git' in contents:
-                    print(ColorString('(git repo) ', fg='magenta', frmt='faint'), end = '')
+                    print(ColorString('(git repo) ', fg='magenta', frmt='faint'), end='')
                     cumulative_length += 11
-                print(ColorString('(', frmt='faint'), end = '')
+                print(ColorString('(', frmt='faint'), end='')
 
 
                 files_string = files_string[2:]
@@ -302,17 +302,17 @@ class File(object):
                 added = False
                 for ch in files_string:
                     if cumulative_length > spaceleft:
-                        print(ColorString('...', frmt='faint'), end = '')
+                        print(ColorString('...', frmt='faint'), end='')
                         added = True
                         break
-                    print(ColorString(ch, frmt='faint'), end = '')
+                    print(ColorString(ch, frmt='faint'), end='')
                     cumulative_length += 1
                 if not added:
                     cumulative_length -= 3
 
-                print(ColorString(')', frmt='faint'), end = '')
+                print(ColorString(')', frmt='faint'), end='')
                 while cumulative_length < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cumulative_length += 1
                 if numfiles != 1:
                     print(ColorString(' [' + str(numfiles) + ' files]', frmt='faint'))
@@ -322,20 +322,20 @@ class File(object):
             else:
                 cum_len = 7
                 while cum_len < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cum_len += 1
                 print(ColorString("[empty]", frmt='faint'))
         elif self.type == 'symlink':
-            print(ColorString(" -> ", frmt='bold'), end = '')
-            print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
+            print(ColorString(" -> ", frmt='bold'), end='')
+            print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end='')
             if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
+                print(ColorString('/', fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end='')
             print()
         else:
             if self.st_size == 0:
                 cum_len = 6
                 while cum_len < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cum_len += 1
                 print(ColorString("[empty]", frmt='faint'))
             else:
@@ -361,16 +361,16 @@ class File(object):
                     added = False
                     for ch in lines_string:
                         if cumulative_length > spaceleft:
-                            print(ColorString('...', frmt='faint'), end = '')
+                            print(ColorString('...', frmt='faint'), end='')
                             added = True
                             break
-                        print(ColorString(ch, frmt='faint'), end = '')
+                        print(ColorString(ch, frmt='faint'), end='')
                         cumulative_length += 1
                     if not added: cumulative_length -= 4
 
-                    print(ColorString(')', frmt='faint'), end = '')
+                    print(ColorString(')', frmt='faint'), end='')
                     while cumulative_length < spaceleft:
-                        print(' ', end = '')
+                        print(' ', end='')
                         cumulative_length += 1
                     if lines != 1:
                         print(ColorString(' [' + str(lines) + ' lines]', frmt='faint'))
@@ -381,7 +381,7 @@ class File(object):
                     pass
 
     def print_permissions(self):
-        print(self.permissions, end = '')
+        print(self.permissions, end='')
 
 
 class Files(object):
@@ -437,13 +437,13 @@ class Files(object):
             if not filename.type == 'noprint':
                 if Config.print_permissions:
                     filename.print_permissions()
-                    print(' ', end = '')
+                    print(' ', end='')
                 if Config.print_size:
                     filename.print_size()
-                    print(' ', end = '')
+                    print(' ', end='')
                 if Config.print_git and self.has_gitrepo:
                     filename.print_gitstatus()
-                    print(' ', end = '')
+                    print(' ', end='')
                     spaceleft -= 3
                 filename.print_name()
                 spaceleft -= len(filename.name) + 1
