@@ -16,8 +16,6 @@ import termios
 #       See: `pydoc locale` and `pydoc gettext`
 BYTES_IEC = ('B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB')
 BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
-BITS_IEC = ('b', 'Kib', 'Mib', 'Gib', 'Tib', 'Pib', 'Eib', 'Zib', 'Yib')
-BITS_SI = ('b', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb', 'Eb', 'Zb', 'Yb')
 
 
 class Config(object):
