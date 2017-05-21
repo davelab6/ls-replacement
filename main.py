@@ -1,10 +1,25 @@
-#!/usr/local/bin/python3
-import os
-import math
-import subprocess
-import os
+#!/usr/bin/env python3
 
-class Config():
+
+from __future__ import print_function
+
+import fcntl
+import math
+import os
+import shlex
+import struct
+import subprocess
+import termios
+
+
+# NOTE: Ideally, should be localized strings.
+#       See: `pydoc locale` and `pydoc gettext`
+BYTES_IEC = ('B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB')
+BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
+
+
+class Config(object):
+
     text = "hello"
     print_size = False
     print_permissions = False
@@ -20,17 +35,51 @@ class Config():
     size_postfix_frmt = {'fg': 'normal', 'frmt': 'normal'}
     max_postfix = 30
 
-# Temporary stackoverflow-code until better solution is found
-def pretty_size(n, pow=0, b=1024, u='B', pre=['']+[p + 'i' for p in'KMGTPEZY']):
-    pow,n = min(int(math.log(max(n * b ** pow, 1), b)), len(pre)-1), n * b ** pow
-    return "%%.%if %%s%%s" % abs(pow % ( -pow - 1)) % (n/b ** float(pow), pre[pow] ,u)
+
+def human_data_units(size, si_units, iec_units, si=True):
+    """Humanize generic data unit sizes (i.e. bytes or bits)."""
+    size = float(size)
+    if si:
+        units = si_units
+        multiple = 1e3
+    else:
+        units = iec_units
+        multiple = 2**10
+    order = 0  # of magnitude - index for the list above
+    while size > multiple:
+        size /= multiple
+        order += 1
+    return size, units[order]
+
+
+def human_bytes(size, si=True, si_units=BYTES_SI, iec_units=BYTES_IEC):
+    """Humanize data sizes to byte units."""
+    return human_data_units(size, si_units, iec_units, si)
+
+
+def pretty_size(size, precision=1, si=True, func=human_bytes):
+    """Pretty-print byte-specific data unit sizes."""
+    size, unit = func(size, si=si)
+    precision = precision if not size.is_integer() else 0
+    return '{0:.{prec}f} {1:s}'.format(size, unit, prec=precision)
+
+
 def normalize_string(string, length):
     for i in range(length - len(string)):
         string = ' ' + string
     return string
 
-class ColorString():
-    def __init__(self, string, fg = "normal", bg = "normal", frmt = "normal"):
+
+def terminal_size():
+    h, w, hp, wp = struct.unpack('HHHH',
+        fcntl.ioctl(0, termios.TIOCGWINSZ,
+                    struct.pack('HHHH', 0, 0, 0, 0)))
+    return w, h
+
+
+class ColorString(object):
+
+    def __init__(self, string, fg="normal", bg="normal", frmt="normal"):
         self.string = string
         self.valid_colors = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "normal"]
         self.valid_formats = ["normal", "bold", "faint", "italic", "underline", "blinking", "unknown", "inverted"]
@@ -43,7 +92,8 @@ class ColorString():
             "magenta" : 5,
             "cyan" : 6,
             "white" : 7,
-            "normal" : 8}
+            "normal" : 8,
+        }
         self.formats = {
             "normal" : 0,
             "bold" : 1,
@@ -51,34 +101,44 @@ class ColorString():
             "italic" : 3,
             "underline" : 4,
             "slowblink" : 5,
-            "rapidblink" : 6,	# NS
+            "rapidblink" : 6,   # NS
             "negative" : 7,
-            "conceal" : 8,		# NS
-            "crossedout" : 9}	# NA
+            "conceal" : 8,      # NS
+            "crossedout" : 9,   # NA
+        }
         self.pre = "\x1b["
         self.post = "\x1b[0m"
-        self.set_fg(fg);
-        self.set_bg(bg);
-        self.set_frmt(frmt);
+        self.set_fg(fg)
+        self.set_bg(bg)
+        self.set_frmt(frmt)
 
     def set_fg(self, color):
-        if not color in self.valid_colors: raise Exception("Not a valid color")
-        else: self.fg = 30 + self.colors[color]
+        if not color in self.valid_colors:
+            raise Exception("Not a valid color")
+        else:
+            self.fg = 30 + self.colors[color]
 
     def set_bg(self, color):
-        if not color in self.valid_colors: raise Exception("Not a valid color")
-        else: self.bg = 40 + self.colors[color]
+        if not color in self.valid_colors:
+            raise Exception("Not a valid color")
+        else:
+            self.bg = 40 + self.colors[color]
 
     def set_frmt(self, frmt):
-        if not frmt in self.valid_formats: raise Exception("Not a valid format")
-        else: self.frmt = self.formats[frmt]
-	
+        if not frmt in self.valid_formats:
+            raise Exception("Not a valid format")
+        else:
+            self.frmt = self.formats[frmt]
+
     def __repr__(self):
         return self.pre + str(self.frmt) + ";" + str(self.fg) + ";" + str(self.bg) + "m" + self.string + self.post
+
     def __add__(self, b):
         return self.__repr__() + b
 
-class File():
+
+class File(object):
+
     def __init__(self, name):
         self.name = name
         self.index_stat()
@@ -96,13 +156,19 @@ class File():
         # directory, symlink, file, executable, dotfile, dotfolder
         modetype = oct(self.st_mode)[2:-3]
 
-        if int(modetype) < 10: modetype = '00' + modetype
-        elif int(modetype) < 100: modetype = '0' + modetype
+        if int(modetype) < 10:
+            modetype = '00' + modetype
+        elif int(modetype) < 100:
+            modetype = '0' + modetype
 
-        if modetype == '040': self.type = 'directory'
-        elif modetype == '100': self.type = 'file'
-        elif modetype == '120': self.type = 'symlink'
-        else: self.type = 'unknown: ' + modetype
+        if modetype == '040':
+            self.type = 'directory'
+        elif modetype == '100':
+            self.type = 'file'
+        elif modetype == '120':
+            self.type = 'symlink'
+        else:
+            self.type = 'unknown: ' + modetype
 
         perm = self.permissions[2]
         if self.type == 'file' and (perm == '1' or perm == '3' or perm == '5' or perm == '6' or perm == '7'):
@@ -110,7 +176,7 @@ class File():
 
         if self.type != 'symlink' and (self.name == "README" or self.name[-2:] == "md" or self.name[-3:] == "txt"):
             self.type = 'text'
-            
+
         if self.type == 'symlink':
             self.realpath = os.path.relpath(os.path.realpath(self.name))
             try:
@@ -127,8 +193,10 @@ class File():
 
     def get_permissions(self):
         self.permissions = oct(self.st_mode)[-3:]
-        if int(self.permissions) < 10: self.type = '00' + self.permissions
-        elif int(self.permissions) < 100: self.type = '0' + self.permissions
+        if int(self.permissions) < 10:
+            self.type = '00' + self.permissions
+        elif int(self.permissions) < 100:
+            self.type = '0' + self.permissions
 
     def get_size(self):
         size_and_postfix = pretty_size(self.st_size)
@@ -146,46 +214,55 @@ class File():
             postfix = postfix + ' '
         self.size = size
         self.size_postfix = postfix
+
     def set_gitstatus(self, gitstatus):
         self.gitstatus = gitstatus
 
     def print_gitstatus(self):
         for char in self.gitstatus:
-            if char == 'M': print(ColorString(char, fg='red', frmt='bold'), end = '')
-            elif char == 'A': print(ColorString(char, fg='green', frmt='bold'), end = '')
-            elif char == 'D': print(ColorString(char, fg='red', frmt='bold'), end = '')
-            elif char == 'R': print(ColorString(char, fg='yellow', frmt='bold'), end = '')
-            elif char == 'C': print(ColorString(char, fg='cyan', frmt='bold'), end = '')
-            elif char == 'U': print(ColorString(char, fg='green', frmt='bold'), end = '')
-            elif char == '!' or char == '?': print(ColorString(char, fg='normal', frmt='faint'), end = '')
-            else: print(ColorString(char, fg='normal', frmt='bold'), end = '')
-      
+            if char == 'M':
+                print(ColorString(char, fg='red', frmt='bold'), end='')
+            elif char == 'A':
+                print(ColorString(char, fg='green', frmt='bold'), end='')
+            elif char == 'D':
+                print(ColorString(char, fg='red', frmt='bold'), end='')
+            elif char == 'R':
+                print(ColorString(char, fg='yellow', frmt='bold'), end='')
+            elif char == 'C':
+                print(ColorString(char, fg='cyan', frmt='bold'), end='')
+            elif char == 'U':
+                print(ColorString(char, fg='green', frmt='bold'), end='')
+            elif char == '!' or char == '?':
+                print(ColorString(char, fg='normal', frmt='faint'), end='')
+            else:
+                print(ColorString(char, fg='normal', frmt='bold'), end='')
+
     def print_name(self):
-        # print(self.type + ": ", end = '')
+        # print(self.type + ": ", end='')
         if self.type == 'directory':
-            print(ColorString(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end='')
         elif self.type == 'symlink':
-            print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
             if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end = '')
+                print(ColorString('/', fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
 
 
 
         elif self.type == 'executable':
-            print(ColorString(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end='')
         elif self.type == 'text':
-            print(ColorString(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end = '')
+            print(ColorString(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end='')
         else:
             print(self.name, end='')
 
     def print_size(self):
-        print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end = '')
-        print(' ', end = '')
-        print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end = '')
+        print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end='')
+        print(' ', end='')
+        print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end='')
 
     def print_postfix(self, spaceleft, listing = True):
         if self.type == 'directory':
-            print(ColorString('/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
+            print(ColorString('/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end='')
             contents = [str(filename) for filename in os.listdir(self.name)]
             contents.sort()
 
@@ -196,8 +273,7 @@ class File():
                     break
 
             if Config.dir_listing and not is_empty:
-                print(' ', end = '')
-
+                print(' ', end='')
 
                 files_string = ''
                 numfiles = 0
@@ -214,9 +290,9 @@ class File():
                 if numfiles == 1: cumulative_length -= 1
 
                 if '.git' in contents:
-                    print(ColorString('(git repo) ', fg='magenta', frmt='faint'), end = '')
+                    print(ColorString('(git repo) ', fg='magenta', frmt='faint'), end='')
                     cumulative_length += 11
-                print(ColorString('(', frmt='faint'), end = '')
+                print(ColorString('(', frmt='faint'), end='')
 
 
                 files_string = files_string[2:]
@@ -224,16 +300,17 @@ class File():
                 added = False
                 for ch in files_string:
                     if cumulative_length > spaceleft:
-                        print(ColorString('...', frmt='faint'), end = '')
+                        print(ColorString('...', frmt='faint'), end='')
                         added = True
                         break
-                    print(ColorString(ch, frmt='faint'), end = '')
+                    print(ColorString(ch, frmt='faint'), end='')
                     cumulative_length += 1
-                if not added: cumulative_length -= 3
+                if not added:
+                    cumulative_length -= 3
 
-                print(ColorString(')', frmt='faint'), end = '')
+                print(ColorString(')', frmt='faint'), end='')
                 while cumulative_length < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cumulative_length += 1
                 if numfiles != 1:
                     print(ColorString(' [' + str(numfiles) + ' files]', frmt='faint'))
@@ -243,27 +320,28 @@ class File():
             else:
                 cum_len = 7
                 while cum_len < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cum_len += 1
                 print(ColorString("[empty]", frmt='faint'))
         elif self.type == 'symlink':
-            print(ColorString(" -> ", frmt='bold'), end = '')
-            print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
+            print(ColorString(" -> ", frmt='bold'), end='')
+            print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end='')
             if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
+                print(ColorString('/', fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end='')
             print()
         else:
             if self.st_size == 0:
                 cum_len = 6
                 while cum_len < spaceleft:
-                    print(' ', end = '')
+                    print(' ', end='')
                     cum_len += 1
                 print(ColorString("[empty]", frmt='faint'))
             else:
                 try:
                     with open(self.name) as f:
                         lines = 0
-                        for line in f: lines += 1
+                        for line in f:
+                            lines += 1
                         if lines > 0:
                             lines_lenght = int(math.log(lines, 10)) + 1
                         else:
@@ -281,16 +359,16 @@ class File():
                     added = False
                     for ch in lines_string:
                         if cumulative_length > spaceleft:
-                            print(ColorString('...', frmt='faint'), end = '')
+                            print(ColorString('...', frmt='faint'), end='')
                             added = True
                             break
-                        print(ColorString(ch, frmt='faint'), end = '')
+                        print(ColorString(ch, frmt='faint'), end='')
                         cumulative_length += 1
                     if not added: cumulative_length -= 4
-                        
-                    print(ColorString(')', frmt='faint'), end = '')
+
+                    print(ColorString(')', frmt='faint'), end='')
                     while cumulative_length < spaceleft:
-                        print(' ', end = '')
+                        print(' ', end='')
                         cumulative_length += 1
                     if lines != 1:
                         print(ColorString(' [' + str(lines) + ' lines]', frmt='faint'))
@@ -301,35 +379,36 @@ class File():
                     pass
 
     def print_permissions(self):
-        print(self.permissions, end = '')
+        print(self.permissions, end='')
 
-class Files():
+
+class Files(object):
+
     def __init__(self, folder):
-
-        
-        
         self.folder = os.path.realpath(folder)
         self.files = [ ]
-
         self.has_gitrepo = False
-        
+
         for name in os.listdir("."):
-            if name == '.git': self.has_gitrepo = True
+            if name == '.git':
+                self.has_gitrepo = True
             curfile = File(name)
             self.files.append(curfile)
 
         if self.has_gitrepo:
             self.initialize_git()
 
-
     def initialize_git(self):
         try:
-            result = subprocess.check_output(['git', 'status', '--short', '--ignored', '--porcelain']).decode('UTF-8').split('\n')
+            cmd = shlex.split('git status --short --ignored --porcelain')
+            result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
         except:
+            # TODO: handle exceptions
+            pass
             print('git status doesn\'t work')
-            return
         git_status = {}
-        for line in result: git_status[line.strip('/')[3:]] = line.strip('/')[:2]
+        for line in result:
+            git_status[line.strip('/')[3:]] = line.strip('/')[:2]
 
         for filename in self.files:
             if filename.name in git_status:
@@ -340,12 +419,15 @@ class Files():
     def print_files(self):
         if self.has_gitrepo and self.has_gitrepo:
             try:
-                result = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('UTF-8').strip('\n')
-                print(ColorString(result, fg='cyan', frmt='bold'), end = '')
+                cmd = shlex.split('git rev-parse --abbrev-ref HEAD')
+                result = subprocess.check_output(cmd, universal_newlines=True).rstrip()
+                print(ColorString(result, fg='cyan', frmt='bold'), end='')
                 print(ColorString(":", frmt='bold'))
-            except:pass
+            except:
+                # TODO: handle exceptions
+                pass
         try:
-            rows, columns = os.popen('stty size', 'r').read().split()
+            columns, rows = terminal_size()
         except:
             columns = 80
         for filename in self.files:
@@ -353,17 +435,18 @@ class Files():
             if not filename.type == 'noprint':
                 if Config.print_permissions:
                     filename.print_permissions()
-                    print(' ', end = '')
+                    print(' ', end='')
                 if Config.print_size:
                     filename.print_size()
-                    print(' ', end = '')
+                    print(' ', end='')
                 if Config.print_git and self.has_gitrepo:
                     filename.print_gitstatus()
-                    print(' ', end = '')
+                    print(' ', end='')
                     spaceleft -= 3
                 filename.print_name()
                 spaceleft -= len(filename.name) + 1
                 filename.print_postfix(spaceleft)
-        
+
+
 if __name__ == "__main__":
     Files('.').print_files()
