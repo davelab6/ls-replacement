@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 
-import fnctl
+import fcntl
 import math
 import os
 import shlex
