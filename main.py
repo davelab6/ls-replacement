@@ -429,7 +429,7 @@ class Files(object):
                 # TODO: handle exceptions
                 pass
         try:
-            rows, columns = terminal_size()
+            columns, rows = terminal_size()
         except:
             columns = 80
         for filename in self.files:
