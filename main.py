@@ -102,16 +102,22 @@ class ColorString(object):
         self.set_frmt(frmt)
 
     def set_fg(self, color):
-        if not color in self.valid_colors: raise Exception("Not a valid color")
-        else: self.fg = 30 + self.colors[color]
+        if not color in self.valid_colors:
+            raise Exception("Not a valid color")
+        else:
+            self.fg = 30 + self.colors[color]
 
     def set_bg(self, color):
-        if not color in self.valid_colors: raise Exception("Not a valid color")
-        else: self.bg = 40 + self.colors[color]
+        if not color in self.valid_colors:
+            raise Exception("Not a valid color")
+        else:
+            self.bg = 40 + self.colors[color]
 
     def set_frmt(self, frmt):
-        if not frmt in self.valid_formats: raise Exception("Not a valid format")
-        else: self.frmt = self.formats[frmt]
+        if not frmt in self.valid_formats:
+            raise Exception("Not a valid format")
+        else:
+            self.frmt = self.formats[frmt]
 
     def __repr__(self):
         return self.pre + str(self.frmt) + ";" + str(self.fg) + ";" + str(self.bg) + "m" + self.string + self.post
@@ -139,13 +145,19 @@ class File(object):
         # directory, symlink, file, executable, dotfile, dotfolder
         modetype = oct(self.st_mode)[2:-3]
 
-        if int(modetype) < 10: modetype = '00' + modetype
-        elif int(modetype) < 100: modetype = '0' + modetype
+        if int(modetype) < 10:
+            modetype = '00' + modetype
+        elif int(modetype) < 100:
+            modetype = '0' + modetype
 
-        if modetype == '040': self.type = 'directory'
-        elif modetype == '100': self.type = 'file'
-        elif modetype == '120': self.type = 'symlink'
-        else: self.type = 'unknown: ' + modetype
+        if modetype == '040':
+            self.type = 'directory'
+        elif modetype == '100':
+            self.type = 'file'
+        elif modetype == '120':
+            self.type = 'symlink'
+        else:
+            self.type = 'unknown: ' + modetype
 
         perm = self.permissions[2]
         if self.type == 'file' and (perm == '1' or perm == '3' or perm == '5' or perm == '6' or perm == '7'):
@@ -170,8 +182,10 @@ class File(object):
 
     def get_permissions(self):
         self.permissions = oct(self.st_mode)[-3:]
-        if int(self.permissions) < 10: self.type = '00' + self.permissions
-        elif int(self.permissions) < 100: self.type = '0' + self.permissions
+        if int(self.permissions) < 10:
+            self.type = '00' + self.permissions
+        elif int(self.permissions) < 100:
+            self.type = '0' + self.permissions
 
     def get_size(self):
         size_and_postfix = pretty_size(self.st_size)
@@ -195,14 +209,22 @@ class File(object):
 
     def print_gitstatus(self):
         for char in self.gitstatus:
-            if char == 'M': print(ColorString(char, fg='red', frmt='bold'), end = '')
-            elif char == 'A': print(ColorString(char, fg='green', frmt='bold'), end = '')
-            elif char == 'D': print(ColorString(char, fg='red', frmt='bold'), end = '')
-            elif char == 'R': print(ColorString(char, fg='yellow', frmt='bold'), end = '')
-            elif char == 'C': print(ColorString(char, fg='cyan', frmt='bold'), end = '')
-            elif char == 'U': print(ColorString(char, fg='green', frmt='bold'), end = '')
-            elif char == '!' or char == '?': print(ColorString(char, fg='normal', frmt='faint'), end = '')
-            else: print(ColorString(char, fg='normal', frmt='bold'), end = '')
+            if char == 'M':
+                print(ColorString(char, fg='red', frmt='bold'), end = '')
+            elif char == 'A':
+                print(ColorString(char, fg='green', frmt='bold'), end = '')
+            elif char == 'D':
+                print(ColorString(char, fg='red', frmt='bold'), end = '')
+            elif char == 'R':
+                print(ColorString(char, fg='yellow', frmt='bold'), end = '')
+            elif char == 'C':
+                print(ColorString(char, fg='cyan', frmt='bold'), end = '')
+            elif char == 'U':
+                print(ColorString(char, fg='green', frmt='bold'), end = '')
+            elif char == '!' or char == '?':
+                print(ColorString(char, fg='normal', frmt='faint'), end = '')
+            else:
+                print(ColorString(char, fg='normal', frmt='bold'), end = '')
 
     def print_name(self):
         # print(self.type + ": ", end = '')
@@ -272,7 +294,8 @@ class File(object):
                         break
                     print(ColorString(ch, frmt='faint'), end = '')
                     cumulative_length += 1
-                if not added: cumulative_length -= 3
+                if not added:
+                    cumulative_length -= 3
 
                 print(ColorString(')', frmt='faint'), end = '')
                 while cumulative_length < spaceleft:
@@ -306,7 +329,8 @@ class File(object):
                 try:
                     with open(self.name) as f:
                         lines = 0
-                        for line in f: lines += 1
+                        for line in f:
+                            lines += 1
                         if lines > 0:
                             lines_lenght = int(math.log(lines, 10)) + 1
                         else:
@@ -355,7 +379,8 @@ class Files(object):
         self.has_gitrepo = False
 
         for name in os.listdir("."):
-            if name == '.git': self.has_gitrepo = True
+            if name == '.git':
+                self.has_gitrepo = True
             curfile = File(name)
             self.files.append(curfile)
 
@@ -369,7 +394,8 @@ class Files(object):
             print('git status doesn\'t work')
             return
         git_status = {}
-        for line in result: git_status[line.strip('/')[3:]] = line.strip('/')[:2]
+        for line in result:
+            git_status[line.strip('/')[3:]] = line.strip('/')[:2]
 
         for filename in self.files:
             if filename.name in git_status:
@@ -383,7 +409,8 @@ class Files(object):
                 result = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('UTF-8').strip('\n')
                 print(ColorString(result, fg='cyan', frmt='bold'), end = '')
                 print(ColorString(":", frmt='bold'))
-            except:pass
+            except:
+                pass
         try:
             rows, columns = os.popen('stty size', 'r').read().split()
         except:
