@@ -6,6 +6,14 @@ import os
 import subprocess
 
 
+# NOTE: Ideally, should be localized strings.
+#       See: `pydoc locale` and `pydoc gettext`
+BYTES_IEC = ('B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB')
+BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
+BITS_IEC = ('b', 'Kib', 'Mib', 'Gib', 'Tib', 'Pib', 'Eib', 'Zib', 'Yib')
+BITS_SI = ('b', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb', 'Eb', 'Zb', 'Yb')
+
+
 class Config(object):
 
     text = "hello"
@@ -24,10 +32,32 @@ class Config(object):
     max_postfix = 30
 
 
-# Temporary stackoverflow-code until better solution is found
-def pretty_size(n, pow=0, b=1024, u='B', pre=['']+[p + 'i' for p in'KMGTPEZY']):
-    pow,n = min(int(math.log(max(n * b ** pow, 1), b)), len(pre)-1), n * b ** pow
-    return "%%.%if %%s%%s" % abs(pow % ( -pow - 1)) % (n/b ** float(pow), pre[pow] ,u)
+def human_data_units(size, si_units, iec_units, si=True):
+    """Humanize generic data unit sizes (i.e. bytes or bits)."""
+    size = float(size)
+    if si:
+        units = si_units
+        multiple = 1e3
+    else:
+        units = iec_units
+        multiple = 2**10
+    order = 0  # of magnitude - index for the list above
+    while size > multiple:
+        size /= multiple
+        order += 1
+    return size, units[order]
+
+
+def human_bytes(size, si=True, si_units=BYTES_SI, iec_units=BYTES_IEC):
+    """Humanize data sizes to byte units."""
+    return human_data_units(size, si_units, iec_units, si)
+
+
+def pretty_size(size, precision=1, si=True, func=human_bytes):
+    """Pretty-print byte-specific data unit sizes."""
+    size, unit = func(size, si=si)
+    precision = precision if not size.is_integer() else 0
+    return '{0:.{prec}f} {1:s}'.format(size, unit, prec=precision)
 
 
 def normalize_string(string, length):
