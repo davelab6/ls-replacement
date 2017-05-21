@@ -3,6 +3,7 @@
 
 import math
 import os
+import shlex
 import subprocess
 
 
@@ -389,11 +390,12 @@ class Files(object):
 
     def initialize_git(self):
         try:
-            cmd = ['git', 'status', '--short', '--ignored', '--porcelain'],
+            cmd = shlex.split('git status --short --ignored --porcelain')
             result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
         except:
+            # TODO: handle exceptions
+            pass
             print('git status doesn\'t work')
-            return
         git_status = {}
         for line in result:
             git_status[line.strip('/')[3:]] = line.strip('/')[:2]
@@ -407,11 +409,12 @@ class Files(object):
     def print_files(self):
         if self.has_gitrepo and self.has_gitrepo:
             try:
-                cmd = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
-                result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
-                print(ColorString(result, fg='cyan', frmt='bold'), end = '')
+                cmd = shlex.split('git rev-parse --abbrev-ref HEAD')
+                result = subprocess.check_output(cmd, universal_newlines=True).rstrip()
+                print(ColorString(result, fg='cyan', frmt='bold'), end='')
                 print(ColorString(":", frmt='bold'))
             except:
+                # TODO: handle exceptions
                 pass
         try:
             rows, columns = os.popen('stty size', 'r').read().split()
