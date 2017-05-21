@@ -1,8 +1,9 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 import os
 import math
 import subprocess
 import os
+import sys
 
 class Config():
     text = "hello"
@@ -163,7 +164,7 @@ class File():
     def print_name(self):
         # print(self.type + ": ", end = '')
         if self.type == 'directory':
-            print(ColorString(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
+            print(ColorString(self.name + '/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
         elif self.type == 'symlink':
             print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end = '')
             if self.realfile != None and self.realfile.type == 'directory':
@@ -185,7 +186,6 @@ class File():
 
     def print_postfix(self, spaceleft, listing = True):
         if self.type == 'directory':
-            print(ColorString('/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
             contents = [str(filename) for filename in os.listdir(self.name)]
             contents.sort()
 
@@ -236,29 +236,32 @@ class File():
                     print(' ', end = '')
                     cumulative_length += 1
                 if numfiles != 1:
-                    print(ColorString(' [' + str(numfiles) + ' files]', frmt='faint'))
+                    print(ColorString(' [' + str(numfiles) + ' files]', frmt='faint'), end = '')
                 else:
-                    print(ColorString(' [' + str(numfiles) + ' file]', frmt='faint'))
+                    print(ColorString(' [' + str(numfiles) + ' file]', frmt='faint'), end = '')
 
             else:
                 cum_len = 7
                 while cum_len < spaceleft:
                     print(' ', end = '')
                     cum_len += 1
-                print(ColorString("[empty]", frmt='faint'))
+                print(ColorString("[empty]", frmt='faint'), end = '')
         elif self.type == 'symlink':
             print(ColorString(" -> ", frmt='bold'), end = '')
-            print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
-            if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
-            print()
+            if not self.realfile == None:
+                cum_len = 4 + len(self.realfile.name)
+                if self.realfile.type == 'directory': cum_len += 1
+                self.realfile.print_name()
+                self.realfile.print_postfix(spaceleft - cum_len)
+            else:
+                print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
         else:
             if self.st_size == 0:
                 cum_len = 6
                 while cum_len < spaceleft:
                     print(' ', end = '')
                     cum_len += 1
-                print(ColorString("[empty]", frmt='faint'))
+                print(ColorString("[empty]", frmt='faint'), end = '')
             else:
                 try:
                     with open(self.name) as f:
@@ -293,11 +296,10 @@ class File():
                         print(' ', end = '')
                         cumulative_length += 1
                     if lines != 1:
-                        print(ColorString(' [' + str(lines) + ' lines]', frmt='faint'))
+                        print(ColorString(' [' + str(lines) + ' lines]', frmt='faint'), end = '')
                     else:
-                        print(ColorString(' [' + str(lines) + ' line]', frmt='faint'))
+                        print(ColorString(' [' + str(lines) + ' line]', frmt='faint'), end = '')
                 except:
-                    print()
                     pass
 
     def print_permissions(self):
@@ -306,8 +308,6 @@ class File():
 class Files():
     def __init__(self, folder):
 
-        
-        
         self.folder = os.path.realpath(folder)
         self.files = [ ]
 
@@ -364,6 +364,7 @@ class Files():
                 filename.print_name()
                 spaceleft -= len(filename.name) + 1
                 filename.print_postfix(spaceleft)
+                print()
         
 if __name__ == "__main__":
     Files('.').print_files()
