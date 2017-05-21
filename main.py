@@ -389,7 +389,8 @@ class Files(object):
 
     def initialize_git(self):
         try:
-            result = subprocess.check_output(['git', 'status', '--short', '--ignored', '--porcelain']).decode('UTF-8').split('\n')
+            cmd = ['git', 'status', '--short', '--ignored', '--porcelain'],
+            result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
         except:
             print('git status doesn\'t work')
             return
@@ -406,7 +407,8 @@ class Files(object):
     def print_files(self):
         if self.has_gitrepo and self.has_gitrepo:
             try:
-                result = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('UTF-8').strip('\n')
+                cmd = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+                result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
                 print(ColorString(result, fg='cyan', frmt='bold'), end = '')
                 print(ColorString(":", frmt='bold'))
             except:
