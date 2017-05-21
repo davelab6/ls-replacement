@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 
+from __future__ import print_function
+
 import math
 import os
 import shlex
