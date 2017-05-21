@@ -2,7 +2,7 @@
 
 Replacement for `ls` that shows information that is relevant. Includes `git status` for files.
 
-![](screenshot.png)
+![](sh.png)
 
 Configs can be found in the `Config()` class.
 
