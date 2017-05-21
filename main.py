@@ -3,10 +3,13 @@
 
 from __future__ import print_function
 
+import fnctl
 import math
 import os
 import shlex
+import struct
 import subprocess
+import termios
 
 
 # NOTE: Ideally, should be localized strings.
@@ -67,6 +70,13 @@ def normalize_string(string, length):
     for i in range(length - len(string)):
         string = ' ' + string
     return string
+
+
+def terminal_size():
+    h, w, hp, wp = struct.unpack('HHHH',
+        fcntl.ioctl(0, termios.TIOCGWINSZ,
+                    struct.pack('HHHH', 0, 0, 0, 0)))
+    return w, h
 
 
 class ColorString(object):
@@ -419,7 +429,7 @@ class Files(object):
                 # TODO: handle exceptions
                 pass
         try:
-            rows, columns = os.popen('stty size', 'r').read().split()
+            rows, columns = terminal_size()
         except:
             columns = 80
         for filename in self.files:
