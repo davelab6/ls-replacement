@@ -6,7 +6,8 @@ import os
 import subprocess
 
 
-class Config():
+class Config(object):
+
     text = "hello"
     print_size = False
     print_permissions = False
@@ -35,7 +36,7 @@ def normalize_string(string, length):
     return string
 
 
-class ColorString():
+class ColorString(object):
 
     def __init__(self, string, fg="normal", bg="normal", frmt="normal"):
         self.string = string
@@ -89,7 +90,7 @@ class ColorString():
         return self.__repr__() + b
 
 
-class File():
+class File(object):
 
     def __init__(self, name):
         self.name = name
@@ -316,7 +317,7 @@ class File():
         print(self.permissions, end = '')
 
 
-class Files():
+class Files(object):
 
     def __init__(self, folder):
         self.folder = os.path.realpath(folder)
@@ -373,6 +374,7 @@ class Files():
                 filename.print_name()
                 spaceleft -= len(filename.name) + 1
                 filename.print_postfix(spaceleft)
+
 
 if __name__ == "__main__":
     Files('.').print_files()
