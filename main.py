@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import os
+
 import math
-import subprocess
 import os
+import subprocess
+
 
 class Config():
     text = "hello"
