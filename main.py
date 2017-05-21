@@ -22,17 +22,22 @@ class Config():
     size_postfix_frmt = {'fg': 'normal', 'frmt': 'normal'}
     max_postfix = 30
 
+
 # Temporary stackoverflow-code until better solution is found
 def pretty_size(n, pow=0, b=1024, u='B', pre=['']+[p + 'i' for p in'KMGTPEZY']):
     pow,n = min(int(math.log(max(n * b ** pow, 1), b)), len(pre)-1), n * b ** pow
     return "%%.%if %%s%%s" % abs(pow % ( -pow - 1)) % (n/b ** float(pow), pre[pow] ,u)
+
+
 def normalize_string(string, length):
     for i in range(length - len(string)):
         string = ' ' + string
     return string
 
+
 class ColorString():
-    def __init__(self, string, fg = "normal", bg = "normal", frmt = "normal"):
+
+    def __init__(self, string, fg="normal", bg="normal", frmt="normal"):
         self.string = string
         self.valid_colors = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "normal"]
         self.valid_formats = ["normal", "bold", "faint", "italic", "underline", "blinking", "unknown", "inverted"]
@@ -45,7 +50,8 @@ class ColorString():
             "magenta" : 5,
             "cyan" : 6,
             "white" : 7,
-            "normal" : 8}
+            "normal" : 8,
+        }
         self.formats = {
             "normal" : 0,
             "bold" : 1,
@@ -53,15 +59,16 @@ class ColorString():
             "italic" : 3,
             "underline" : 4,
             "slowblink" : 5,
-            "rapidblink" : 6,	# NS
+            "rapidblink" : 6,   # NS
             "negative" : 7,
-            "conceal" : 8,		# NS
-            "crossedout" : 9}	# NA
+            "conceal" : 8,      # NS
+            "crossedout" : 9,   # NA
+        }
         self.pre = "\x1b["
         self.post = "\x1b[0m"
-        self.set_fg(fg);
-        self.set_bg(bg);
-        self.set_frmt(frmt);
+        self.set_fg(fg)
+        self.set_bg(bg)
+        self.set_frmt(frmt)
 
     def set_fg(self, color):
         if not color in self.valid_colors: raise Exception("Not a valid color")
@@ -74,13 +81,16 @@ class ColorString():
     def set_frmt(self, frmt):
         if not frmt in self.valid_formats: raise Exception("Not a valid format")
         else: self.frmt = self.formats[frmt]
-	
+
     def __repr__(self):
         return self.pre + str(self.frmt) + ";" + str(self.fg) + ";" + str(self.bg) + "m" + self.string + self.post
+
     def __add__(self, b):
         return self.__repr__() + b
 
+
 class File():
+
     def __init__(self, name):
         self.name = name
         self.index_stat()
@@ -112,7 +122,7 @@ class File():
 
         if self.type != 'symlink' and (self.name == "README" or self.name[-2:] == "md" or self.name[-3:] == "txt"):
             self.type = 'text'
-            
+
         if self.type == 'symlink':
             self.realpath = os.path.relpath(os.path.realpath(self.name))
             try:
@@ -148,6 +158,7 @@ class File():
             postfix = postfix + ' '
         self.size = size
         self.size_postfix = postfix
+
     def set_gitstatus(self, gitstatus):
         self.gitstatus = gitstatus
 
@@ -161,7 +172,7 @@ class File():
             elif char == 'U': print(ColorString(char, fg='green', frmt='bold'), end = '')
             elif char == '!' or char == '?': print(ColorString(char, fg='normal', frmt='faint'), end = '')
             else: print(ColorString(char, fg='normal', frmt='bold'), end = '')
-      
+
     def print_name(self):
         # print(self.type + ": ", end = '')
         if self.type == 'directory':
@@ -199,7 +210,6 @@ class File():
 
             if Config.dir_listing and not is_empty:
                 print(' ', end = '')
-
 
                 files_string = ''
                 numfiles = 0
@@ -289,7 +299,7 @@ class File():
                         print(ColorString(ch, frmt='faint'), end = '')
                         cumulative_length += 1
                     if not added: cumulative_length -= 4
-                        
+
                     print(ColorString(')', frmt='faint'), end = '')
                     while cumulative_length < spaceleft:
                         print(' ', end = '')
@@ -305,16 +315,14 @@ class File():
     def print_permissions(self):
         print(self.permissions, end = '')
 
-class Files():
-    def __init__(self, folder):
 
-        
-        
+class Files():
+
+    def __init__(self, folder):
         self.folder = os.path.realpath(folder)
         self.files = [ ]
-
         self.has_gitrepo = False
-        
+
         for name in os.listdir("."):
             if name == '.git': self.has_gitrepo = True
             curfile = File(name)
@@ -322,7 +330,6 @@ class Files():
 
         if self.has_gitrepo:
             self.initialize_git()
-
 
     def initialize_git(self):
         try:
@@ -366,6 +373,6 @@ class Files():
                 filename.print_name()
                 spaceleft -= len(filename.name) + 1
                 filename.print_postfix(spaceleft)
-        
+
 if __name__ == "__main__":
     Files('.').print_files()
