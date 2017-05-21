@@ -19,7 +19,6 @@ BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
 
 class Config(object):
 
-    text = "hello"
     print_size = True
     print_permissions = False
     print_dotfiles = True
@@ -56,7 +55,7 @@ def human_bytes(size, si=True, si_units=BYTES_SI, iec_units=BYTES_IEC):
     return human_data_units(size, si_units, iec_units, si)
 
 
-def pretty_size(size, precision=1, si=True, func=human_bytes):
+def pretty_size(size, precision=0, si=True, func=human_bytes):
     """Pretty-print byte-specific data unit sizes."""
     size, unit = func(size, si=si)
     precision = precision if not size.is_integer() else 0
@@ -438,8 +437,7 @@ class Files(object):
                     print(' ', end='')
                 if Config.print_size:
                     filename.print_size()
-                    spaceleft -= 9
-                    print(' ', end='')
+                    spaceleft -= 8
                 if Config.print_git and self.has_gitrepo:
                     filename.print_gitstatus()
                     print(' ', end='')
