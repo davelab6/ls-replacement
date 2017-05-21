@@ -20,7 +20,7 @@ BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
 class Config(object):
 
     print_size = True
-    print_permissions = False
+    print_permissions = True
     print_dotfiles = True
     print_git = True
     dir_frmt = {'fg': 'blue', 'frmt': 'bold'}
@@ -196,6 +196,25 @@ class File(object):
         elif int(self.permissions) < 100:
             self.type = '0' + self.permissions
 
+        if self.permissions[0] == '0':
+            self.ownerpermissions = ['-', '-', '-']
+        elif self.permissions[0] == '1':
+            self.ownerpermissions = ['-', '-', 'x']
+        elif self.permissions[0] == '2':
+            self.ownerpermissions = ['r', '-', '-']
+        elif self.permissions[0] == '3':
+            self.ownerpermissions = ['-', 'w', 'x']
+        elif self.permissions[0] == '4':
+            self.ownerpermissions = ['r', '-', '-']
+        elif self.permissions[0] == '5':
+            self.ownerpermissions = ['r', '-', 'x']
+        elif self.permissions[0] == '6':
+            self.ownerpermissions = ['r', 'w', '-']
+        elif self.permissions[0] == '7':
+            self.ownerpermissions = ['r', 'w', 'x']
+        else:
+            self.ownerpermissions = ['-', '-', '-']
+
     def get_size(self):
         size_and_postfix = pretty_size(self.st_size)
         size = ''
@@ -255,7 +274,6 @@ class File(object):
 
     def print_size(self):
         print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end='')
-        print(' ', end='')
         print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end='')
 
     def print_postfix(self, spaceleft, listing = True):
@@ -378,7 +396,16 @@ class File(object):
                     pass
 
     def print_permissions(self):
-        print(self.permissions, end='')
+        # print(self.permissions, end='')
+        for perm in self.ownerpermissions:
+            if perm == '-':
+                print(perm, end = '')
+            elif perm == 'r':
+                print(ColorString(perm, fg='yellow', frmt='bold'), end='')
+            elif perm == 'w':
+                print(ColorString(perm, fg='red', frmt='bold'), end='')
+            elif perm == 'x':
+                print(ColorString(perm, fg='green', frmt='bold'), end='')
 
 
 class Files(object):
@@ -435,9 +462,10 @@ class Files(object):
                 if Config.print_permissions:
                     filename.print_permissions()
                     print(' ', end='')
+                    spaceleft -= 4
                 if Config.print_size:
                     filename.print_size()
-                    spaceleft -= 8
+                    spaceleft -= 7
                 if Config.print_git and self.has_gitrepo:
                     filename.print_gitstatus()
                     print(' ', end='')
