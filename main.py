@@ -19,47 +19,29 @@ BYTES_SI = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
 
 class Config(object):
 
-    print_size = True
-    print_permissions = True
-    print_dotfiles = True
+    print_ownerpermissions = False
+    print_grouppermissions = False
+    print_ottherpermissions = False
+    print_size = False
     print_git = True
+    print_aftertext = True
+
     dir_frmt = {'fg': 'blue', 'frmt': 'bold'}
-    dir_listing = True
     sym_frmt = {'fg': 'blue', 'frmt': 'italic'}
+    dot_frmt = {'fg': 'normal', 'frmt': 'italic'}
+    program_frmt = {'fg': 'normal', 'frmt': 'bold'}
+    makefile_frmt = {'fg': 'magenta', 'frmt': 'normal'}
     exe_frmt = {'fg': 'green', 'frmt': 'italic'}
     text_frmt = {'fg': 'yellow', 'frmt': 'normal'}
-    sym_postfix_frmt = {'fg': 'normal', 'frmt': 'faint'}
+
     size_frmt = {'fg': 'normal', 'frmt': 'bold'}
     size_postfix_frmt = {'fg': 'normal', 'frmt': 'normal'}
-    max_postfix = 30
+
+    print_dotfiles = True
+
+    noprint_files = ['.DS_Store', '__pycache__/']
 
 
-def human_data_units(size, si_units, iec_units, si=True):
-    """Humanize generic data unit sizes (i.e. bytes or bits)."""
-    size = float(size)
-    if si:
-        units = si_units
-        multiple = 1e3
-    else:
-        units = iec_units
-        multiple = 2**10
-    order = 0  # of magnitude - index for the list above
-    while size > multiple:
-        size /= multiple
-        order += 1
-    return size, units[order]
-
-
-def human_bytes(size, si=True, si_units=BYTES_SI, iec_units=BYTES_IEC):
-    """Humanize data sizes to byte units."""
-    return human_data_units(size, si_units, iec_units, si)
-
-
-def pretty_size(size, precision=0, si=True, func=human_bytes):
-    """Pretty-print byte-specific data unit sizes."""
-    size, unit = func(size, si=si)
-    precision = precision if not size.is_integer() else 0
-    return '{0:.{prec}f} {1:s}'.format(size, unit, prec=precision)
 
 
 def normalize_string(string, length):
@@ -67,73 +49,46 @@ def normalize_string(string, length):
         string = ' ' + string
     return string
 
+def colorize_string(string, fg="normal", bg="normal", frmt="normal"):
+    valid_colors = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "normal"]
+    valid_formats = ["normal", "bold", "faint", "italic", "underline", "blinking", "unknown", "inverted"]
+    colors = {
+        "black" : 0,
+        "red" : 1,
+        "green" : 2,
+        "yellow" : 3,
+        "blue" : 4,
+        "magenta" : 5,
+        "cyan" : 6,
+        "white" : 7,
+        "normal" : 8,
+    }
+    formats = {
+        "normal" : 0,
+        "bold" : 1,
+        "faint" : 2,
+        "italic" : 3,
+        "underline" : 4,
+        "slowblink" : 5,
+        "rapidblink" : 6,   # NS
+        "negative" : 7,
+        "conceal" : 8,      # NS
+        "crossedout" : 9,   # NA
+    }
+    pre = "\x1b["
+    post = "\x1b[0m"
+        
+    if not fg in valid_colors:
+        raise Exception("Not a valid color")
+    if not bg in valid_colors:
+        raise Exception("Not a valid color")
+    if not frmt in valid_formats:
+        raise Exception("Not a valid format")
 
-def terminal_size():
-    h, w, hp, wp = struct.unpack('HHHH',
-        fcntl.ioctl(0, termios.TIOCGWINSZ,
-                    struct.pack('HHHH', 0, 0, 0, 0)))
-    return w, h
-
-
-class ColorString(object):
-
-    def __init__(self, string, fg="normal", bg="normal", frmt="normal"):
-        self.string = string
-        self.valid_colors = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "normal"]
-        self.valid_formats = ["normal", "bold", "faint", "italic", "underline", "blinking", "unknown", "inverted"]
-        self.colors = {
-            "black" : 0,
-            "red" : 1,
-            "green" : 2,
-            "yellow" : 3,
-            "blue" : 4,
-            "magenta" : 5,
-            "cyan" : 6,
-            "white" : 7,
-            "normal" : 8,
-        }
-        self.formats = {
-            "normal" : 0,
-            "bold" : 1,
-            "faint" : 2,
-            "italic" : 3,
-            "underline" : 4,
-            "slowblink" : 5,
-            "rapidblink" : 6,   # NS
-            "negative" : 7,
-            "conceal" : 8,      # NS
-            "crossedout" : 9,   # NA
-        }
-        self.pre = "\x1b["
-        self.post = "\x1b[0m"
-        self.set_fg(fg)
-        self.set_bg(bg)
-        self.set_frmt(frmt)
-
-    def set_fg(self, color):
-        if not color in self.valid_colors:
-            raise Exception("Not a valid color")
-        else:
-            self.fg = 30 + self.colors[color]
-
-    def set_bg(self, color):
-        if not color in self.valid_colors:
-            raise Exception("Not a valid color")
-        else:
-            self.bg = 40 + self.colors[color]
-
-    def set_frmt(self, frmt):
-        if not frmt in self.valid_formats:
-            raise Exception("Not a valid format")
-        else:
-            self.frmt = self.formats[frmt]
-
-    def __repr__(self):
-        return self.pre + str(self.frmt) + ";" + str(self.fg) + ";" + str(self.bg) + "m" + self.string + self.post
-
-    def __add__(self, b):
-        return self.__repr__() + b
-
+    fg = 30 + colors[fg]
+    bg = 40 + colors[bg]
+    frmt = formats[frmt]
+    return pre + str(frmt) + ";" + str(fg) + ";" + str(bg) + "m" + string + post
 
 class File(object):
 
@@ -150,73 +105,89 @@ class File(object):
         self.st_mode = st[0]
         self.st_size = st[6]
 
+    def get_permissions(self):
+
+        def index_permissions(number):
+            if number == 0: return {'read': False, 'write': False, 'exec': False}
+            elif number == 1:
+                return {'read': False, 'write': False, 'exec': True}
+            elif number == 2:
+                return {'read': True, 'write': False, 'exec': False}
+            elif number == 3:
+                return {'read': False, 'write': True, 'exec': True}
+            elif number == 4:
+                return {'read': True, 'write': False, 'exec': False}
+            elif number == 5:
+                return {'read': True, 'write': False, 'exec': True}
+            elif number == 6:
+                return {'read': True, 'write': True, 'exec': False}
+            elif number == 7:
+                return {'read': True, 'write': True, 'exec': True}
+            else:
+                return {'read': False, 'write': False, 'exec': False}
+            
+            
+        permnum = oct(self.st_mode)[-3:]
+
+        self.permissions = {}
+        self.permissions['owner'] = index_permissions(int(permnum[0]))
+        self.permissions['group'] = index_permissions(int(permnum[1]))
+        self.permissions['others'] = index_permissions(int(permnum[2]))
+
     def get_type(self):
-        # directory, symlink, file, executable, dotfile, dotfolder
+        ''' supported types are: (directory, exectuable, symlink, text, file, dotfile)
+        todo: pictures'''
+
         modetype = oct(self.st_mode)[2:-3]
+        self.modetype = modetype
 
-        if int(modetype) < 10:
-            modetype = '00' + modetype
-        elif int(modetype) < 100:
-            modetype = '0' + modetype
-
-        if modetype == '040':
+        if modetype in ['040', '40']:
             self.type = 'directory'
-        elif modetype == '100':
-            self.type = 'file'
-        elif modetype == '120':
-            self.type = 'symlink'
-        else:
-            self.type = 'unknown: ' + modetype
+            self.name += '/'
 
-        perm = self.permissions[2]
-        if self.type == 'file' and (perm == '1' or perm == '3' or perm == '5' or perm == '6' or perm == '7'):
+        elif modetype == '100' and self.permissions['owner']['exec']:
             self.type = 'executable'
 
-        if self.type != 'symlink' and (self.name == "README" or self.name[-2:] == "md" or self.name[-3:] == "txt"):
-            self.type = 'text'
-
-        if self.type == 'symlink':
+        elif modetype == '120':
+            self.type = 'symlink'
             self.realpath = os.path.relpath(os.path.realpath(self.name))
             try:
                 self.realfile = File(self.realpath)
                 if self.realfile.type == 'directory':
-                    self.point_to_folder = True
-                else:
-                    self.point_to_folder = False
+                    self.name += '/'
             except:
                 self.realfile = None
-
-        if (self.name[0] == '.' and not Config.print_dotfiles) or self.name == '.DS_Store' or self.name == '.git' or self.name == '.gitignore':
-            self.type = 'noprint'
-
-    def get_permissions(self):
-        self.permissions = oct(self.st_mode)[-3:]
-        if int(self.permissions) < 10:
-            self.type = '00' + self.permissions
-        elif int(self.permissions) < 100:
-            self.type = '0' + self.permissions
-
-        if self.permissions[0] == '0':
-            self.ownerpermissions = ['-', '-', '-']
-        elif self.permissions[0] == '1':
-            self.ownerpermissions = ['-', '-', 'x']
-        elif self.permissions[0] == '2':
-            self.ownerpermissions = ['r', '-', '-']
-        elif self.permissions[0] == '3':
-            self.ownerpermissions = ['-', 'w', 'x']
-        elif self.permissions[0] == '4':
-            self.ownerpermissions = ['r', '-', '-']
-        elif self.permissions[0] == '5':
-            self.ownerpermissions = ['r', '-', 'x']
-        elif self.permissions[0] == '6':
-            self.ownerpermissions = ['r', 'w', '-']
-        elif self.permissions[0] == '7':
-            self.ownerpermissions = ['r', 'w', 'x']
         else:
-            self.ownerpermissions = ['-', '-', '-']
+            if self.name in ['README', 'readme'] or self.name[-2:] == "md" or self.name[-3:] == "txt":
+                self.type = 'text'
+            elif self.name[-2:] in ['.c'] or self.name[-3:] in ['.py']:
+                self.type = 'program'
+            elif self.name in ['Makefile', 'makefile']:
+                self.type = 'makefile'
+            else:
+                self.type = 'file'
+
+        if self.name[0] == '.' and self.name[1] != '.':
+            self.type = 'dotfile'
+            
 
     def get_size(self):
-        size_and_postfix = pretty_size(self.st_size)
+
+        def human_size(size, precision=0):
+            size = float(size)
+            units = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB')
+            multiple = 1e3
+            order = 0  # of magnitude - index for the list above
+            while size > multiple:
+                size /= multiple
+                order += 1
+
+            unit = units[order]
+
+            precision = precision if not size.is_integer() else 0
+            return '{0:.{prec}f} {1:s}'.format(size, unit, prec=precision)
+
+        size_and_postfix = human_size(self.st_size)
         size = ''
         lastnum = 0
         for i in range(len(size_and_postfix)):
@@ -224,13 +195,11 @@ class File(object):
                 size = size + size_and_postfix[i]
                 lastnum = i
 
-        postfix = size_and_postfix[lastnum + 2:]
-        for i in range(4 - len(size)):
-            size = ' ' + size
-        for i in range(3 - len(postfix)):
-            postfix = postfix + ' '
+        self.size_postfix = size_and_postfix[lastnum + 2:]
         self.size = size
-        self.size_postfix = postfix
+
+
+
 
     def set_gitstatus(self, gitstatus):
         self.gitstatus = gitstatus
@@ -238,174 +207,184 @@ class File(object):
     def print_gitstatus(self):
         for char in self.gitstatus:
             if char == 'M':
-                print(ColorString(char, fg='red', frmt='bold'), end='')
+                print(colorize_string(char, fg='red', frmt='bold'), end='')
             elif char == 'A':
-                print(ColorString(char, fg='green', frmt='bold'), end='')
+                print(colorize_string(char, fg='green', frmt='bold'), end='')
             elif char == 'D':
-                print(ColorString(char, fg='red', frmt='bold'), end='')
+                print(colorize_string(char, fg='red', frmt='bold'), end='')
             elif char == 'R':
-                print(ColorString(char, fg='yellow', frmt='bold'), end='')
+                print(colorize_string(char, fg='yellow', frmt='bold'), end='')
             elif char == 'C':
-                print(ColorString(char, fg='cyan', frmt='bold'), end='')
+                print(colorize_string(char, fg='cyan', frmt='bold'), end='')
             elif char == 'U':
-                print(ColorString(char, fg='green', frmt='bold'), end='')
+                print(colorize_string(char, fg='green', frmt='bold'), end='')
             elif char == '!' or char == '?':
-                print(ColorString(char, fg='normal', frmt='faint'), end='')
+                print(colorize_string(char, fg='normal', frmt='faint'), end='')
             else:
-                print(ColorString(char, fg='normal', frmt='bold'), end='')
+                print(colorize_string(char, fg='normal', frmt='bold'), end='')
 
     def print_name(self):
-        # print(self.type + ": ", end='')
+
         if self.type == 'directory':
-            print(ColorString(self.name + '/', fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
-        elif self.type == 'symlink':
-            print(ColorString(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
-            if self.realfile != None and self.realfile.type == 'directory':
-                print(ColorString('/', fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
-
-
-
+            print(colorize_string(self.name, fg=Config.dir_frmt['fg'], frmt=Config.dir_frmt['frmt']), end = '')
         elif self.type == 'executable':
-            print(ColorString(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end='')
+            print(colorize_string(self.name, fg=Config.exe_frmt['fg'], frmt=Config.exe_frmt['frmt']), end='')
+        elif self.type == 'symlink':
+            print(colorize_string(self.name, fg=Config.sym_frmt['fg'], frmt=Config.sym_frmt['frmt']), end='')
         elif self.type == 'text':
-            print(ColorString(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end='')
+            print(colorize_string(self.name, fg=Config.text_frmt['fg'], frmt=Config.text_frmt['frmt']), end='')
+        elif self.type == 'dotfile':
+            print(colorize_string(self.name, fg=Config.dot_frmt['fg'], frmt=Config.dot_frmt['frmt']), end='')
+        elif self.type == 'program':
+            print(colorize_string(self.name, fg=Config.program_frmt['fg'], frmt=Config.program_frmt['frmt']), end='')
+        elif self.type == 'makefile':
+            print(colorize_string(self.name, fg=Config.makefile_frmt['fg'], frmt=Config.makefile_frmt['frmt']), end='')
         else:
             print(self.name, end='')
 
     def print_size(self):
-        print(ColorString(self.size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end='')
-        print(ColorString(self.size_postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end='')
+        size = self.size
+        postfix = self.size_postfix
 
-    def print_postfix(self, spaceleft, listing = True):
+        for i in range(3 - len(size)):
+            size = ' ' + size
+        if len(postfix) == 1:
+            postfix += ' '
+
+        print(colorize_string(size, fg=Config.size_frmt['fg'], frmt=Config.size_frmt['frmt']), end='')
+        print(colorize_string(postfix, fg=Config.size_postfix_frmt['fg'], frmt=Config.size_postfix_frmt['frmt']), end='')
+
+    def print_aftertext(self, spaceleft, listing = True):
+        
+        print(end = ' ')
+        spaceleft -= 1
+
+        def print_finite(prefix, postfix, var_string, spaceleft):
+            
+            prelen = len(prefix)
+            postlen = len(postfix)
+            strlen = len(var_string)
+
+            if not var_string and (prelen + postlen + 1 <= spaceleft): # No var_string
+                print(colorize_string(prefix, frmt='faint'), end = '')
+                for i in range(spaceleft - (prelen + postlen)):
+                    print(' ', end = '')
+                print(colorize_string(postfix, frmt='faint'), end = '')
+                return
+
+            if prelen + strlen + postlen + 4 <= spaceleft: # Everything goes nicely
+                print(colorize_string(prefix + ' (' + var_string + ') ', frmt='faint'), end = '')
+                for i in range(spaceleft - (prelen + strlen + postlen + 4)):
+                    print(' ', end = '')
+                print(colorize_string(postfix, frmt='faint'), end = '')
+                return
+
+            if prelen + postlen + 6 >= spaceleft: # No space for var_string segment + pre/post
+                if prelen + postlen + 1 <= spaceleft:
+                    print(colorize_string(prefix, frmt='faint'), end = '')
+                    for i in range(spaceleft - (prelen + postlen)):
+                        print(' ', end = '')
+                    print(colorize_string(postfix, frmt='faint'), end = '')
+
+                elif prelen <= spaceleft:
+                    print(colorize_string(prefix, frmt='faint'), end = '')
+                elif postlen <= spaceleft:
+                    for i in range(spaceleft - prelen):
+                        print(end = ' ')
+                    print(colorize_string(postfix, frmt='faint'), end = '')
+                return
+
+            var_string = var_string[: (spaceleft - (prelen + postlen + 6))]
+            print(colorize_string(prefix + ' (' + var_string + '..) ' + postfix, frmt='faint'), end = '')
+            
         if self.type == 'directory':
             contents = [str(filename) for filename in os.listdir(self.name)]
             contents.sort()
-
-            is_empty = True
+            numfiles = 0
+            files_string = ''
             for filename in contents:
                 if not filename[0] == '.':
-                    is_empty = False
-                    break
+                    files_string = files_string + ', ' + filename
+                    numfiles += 1
+            files_string = files_string[2:]
 
-            if Config.dir_listing and not is_empty:
-                print(' ', end='')
+            if '.git' in contents:
+                    print(colorize_string('(git repo) ', fg='magenta', frmt='faint'), end='')
+                    spaceleft -= 11
 
-                files_string = ''
-                numfiles = 0
-                for filename in contents:
-                    if not filename[0] == '.':
-                        files_string = files_string + ', ' + filename
-                        numfiles += 1
-                if numfiles > 0:
-                    numlen = math.log(numfiles, 10) + 1
-                else:
-                    numlen = 1
-
-                cumulative_length = 15 + numlen
-                if numfiles == 1: cumulative_length -= 1
-
-                if '.git' in contents:
-                    print(ColorString('(git repo) ', fg='magenta', frmt='faint'), end='')
-                    cumulative_length += 11
-                print(ColorString('(', frmt='faint'), end='')
-
-
-                files_string = files_string[2:]
-
-                added = False
-                for ch in files_string:
-                    if cumulative_length > spaceleft:
-                        print(ColorString('...', frmt='faint'), end='')
-                        added = True
-                        break
-                    print(ColorString(ch, frmt='faint'), end='')
-                    cumulative_length += 1
-                if not added:
-                    cumulative_length -= 3
-
-                print(ColorString(')', frmt='faint'), end='')
-                while cumulative_length < spaceleft:
-                    print(' ', end='')
-                    cumulative_length += 1
-                if numfiles != 1:
-                    print(ColorString(' [' + str(numfiles) + ' files]', frmt='faint'), end = '')
-                else:
-                    print(ColorString(' [' + str(numfiles) + ' file]', frmt='faint'), end = '')
-
+            if numfiles == 1:
+                postfix = '[' + str(numfiles) + ' file]'
             else:
-                cum_len = 7
-                while cum_len < spaceleft:
-                    print(' ', end='')
-                    cum_len += 1
-                print(ColorString("[empty]", frmt='faint'), end = '')
+                postfix = '[' + str(numfiles) + ' files]'
+                
+            var_string = files_string
+            prefix = '[' + self.size + self.size_postfix + ']'
+            print_finite(prefix, postfix, var_string, spaceleft)
+
         elif self.type == 'symlink':
-            print(ColorString(" -> ", frmt='bold'), end = '')
+            print(colorize_string("-> ", frmt='bold'), end = '')
+            spaceleft -= 3
             if not self.realfile == None:
-                cum_len = 4 + len(self.realfile.name)
-                if self.realfile.type == 'directory': cum_len += 1
                 self.realfile.print_name()
-                self.realfile.print_postfix(spaceleft - cum_len)
+                spaceleft -= len(self.realfile.name)
+                self.realfile.print_aftertext(spaceleft)
             else:
-                print(ColorString(self.realpath, fg=Config.sym_postfix_frmt['fg'], frmt=Config.sym_postfix_frmt['frmt']), end = '')
+                print(colorize_string(self.realpath, fg='normal', frmt='italic'), end = '')
+
         else:
+            if self.type == 'program':
+                if self.name[-2:] == '.c':
+                    try:
+                        cmd = shlex.split('grep "int main(" ' + self.name)
+                        result = subprocess.check_output(cmd, universal_newlines=True).rstrip()
+                        if 'int main(' in result:
+                            print(colorize_string('(main) ', fg='magenta', frmt='faint'), end='')
+                            spaceleft -= 7
+                    except:
+                        pass
             if self.st_size == 0:
-                cum_len = 6
-                while cum_len < spaceleft:
-                    print(' ', end='')
-                    cum_len += 1
-                print(ColorString("[empty]", frmt='faint'), end = '')
+                print_finite('(empty)', '', '', spaceleft)
             else:
                 try:
                     with open(self.name) as f:
+                        lines_string = ''
                         lines = 0
                         for line in f:
                             lines += 1
-                        if lines > 0:
-                            lines_lenght = int(math.log(lines, 10)) + 1
-                        else:
-                            lines_lenght = 1
-                        if lines == 1:
-                            lines_lenght -= 1
-                        cumulative_length = 15 + lines_lenght
-                    with open(self.name) as f:
-                        lines_string = ''
-                        for line in f:
-                            lines_string = lines_string + ' ' + line.strip('\n')
+                            lines_string = lines_string + ' ' + line.strip('\n').strip('\t')
                         lines_string = lines_string[1:]
-
-                    print(ColorString(" (", frmt='faint'), end ='')
-                    added = False
-                    for ch in lines_string:
-                        if cumulative_length > spaceleft:
-                            print(ColorString('...', frmt='faint'), end='')
-                            added = True
-                            break
-                        print(ColorString(ch, frmt='faint'), end='')
-                        cumulative_length += 1
-                    if not added: cumulative_length -= 4
-
-                    print(ColorString(')', frmt='faint'), end='')
-                    while cumulative_length < spaceleft:
-                        print(' ', end='')
-                        cumulative_length += 1
-                    if lines != 1:
-                        print(ColorString(' [' + str(lines) + ' lines]', frmt='faint'), end = '')
-                    else:
-                        print(ColorString(' [' + str(lines) + ' line]', frmt='faint'), end = '')
+                        if lines == 1:
+                            postfix = '[' + str(lines) + ' line]'
+                        else:
+                            postfix = '[' + str(lines) + ' lines]'
+                        prefix = '[' + self.size + self.size_postfix + ']'
+                        var_string = lines_string
+                        print_finite(prefix, postfix, var_string, spaceleft)
                 except:
                     pass
 
-    def print_permissions(self):
-        # print(self.permissions, end='')
-        for perm in self.ownerpermissions:
-            if perm == '-':
-                print(perm, end = '')
-            elif perm == 'r':
-                print(ColorString(perm, fg='yellow', frmt='bold'), end='')
-            elif perm == 'w':
-                print(ColorString(perm, fg='red', frmt='bold'), end='')
-            elif perm == 'x':
-                print(ColorString(perm, fg='green', frmt='bold'), end='')
+    def __print_permissions(self, permissions):
+        if permissions['read']:
+            print(colorize_string('r', fg='yellow', frmt='bold'), end='')
+        else:
+            print('-', end = '')
+        if permissions['write']:
+            print(colorize_string('w', fg='red', frmt='bold'), end='')
+        else:
+            print('-', end = '')
+        if permissions['exec']:
+            print(colorize_string('x', fg='green', frmt='bold'), end='')
+        else:
+            print('-', end = '')
+
+    def print_ownerpermissions(self):
+        self.__print_permissions(self.permissions['owner'])
+
+    def print_grouppermissions(self):
+        self.__print_permissions(self.permissions['group'])
+
+    def print_otherspermissions(self):
+        self.__print_permissions(self.permissions['others'])
 
 
 class Files(object):
@@ -429,9 +408,9 @@ class Files(object):
             cmd = shlex.split('git status --short --ignored --porcelain')
             result = subprocess.check_output(cmd, universal_newlines=True).splitlines()
         except:
-            # TODO: handle exceptions
-            pass
-            print('git status doesn\'t work')
+            self.has_gitrepo = False
+            return
+
         git_status = {}
         for line in result:
             git_status[line.strip('/')[3:]] = line.strip('/')[:2]
@@ -443,37 +422,82 @@ class Files(object):
                 filename.set_gitstatus('  ')
 
     def print_files(self):
-        if self.has_gitrepo and self.has_gitrepo:
+        if self.has_gitrepo and Config.print_git:
             try:
                 cmd = shlex.split('git rev-parse --abbrev-ref HEAD')
                 result = subprocess.check_output(cmd, universal_newlines=True).rstrip()
-                print(ColorString(result, fg='cyan', frmt='bold'), end='')
-                print(ColorString(":", frmt='bold'))
+                print(colorize_string(' branch: ', fg='cyan', frmt='bold'), end = '')
+                print(colorize_string(result, frmt='normal'))
+
+                cmd = shlex.split('git log -1')
+                result = subprocess.check_output(cmd, universal_newlines=True)
+                buf = ''
+                name = 'unknown'
+                i = 0
+                for ch in result:
+                    buf = buf + ch
+                    if ch == '\n':
+                        i += 1
+                        if i == 5:
+                            while buf[0] == ' ':
+                                buf = buf[1:]
+                            print(colorize_string(' lastest commit ', fg='yellow', frmt='normal'), end='')
+                            print(colorize_string(": ", frmt='bold'), end = '')
+                            print(colorize_string('"' + buf.rstrip() + '"', fg='normal', frmt='italic'), end = '')
+                            print(colorize_string(' (by ' + name + ')'))
+                            break
+                        if i == 2:
+                            name = buf
+                            name = name[8:]
+                            r = 0
+                            for ch in name:
+                                if ch == '<':
+                                    name = name[:r - 1]
+                                r += 1
+                        buf = ''
             except:
-                # TODO: handle exceptions
                 pass
         try:
-            columns, rows = terminal_size()
+            h, w, hp, wp = struct.unpack('HHHH', fcntl.ioctl(0, termios.TIOCGWINSZ, struct.pack('HHHH', 0, 0, 0, 0)))
+            columns = w
         except:
             columns = 80
+
         for filename in self.files:
             spaceleft = int(columns)
-            if not filename.type == 'noprint':
-                if Config.print_permissions:
-                    filename.print_permissions()
-                    print(' ', end='')
-                    spaceleft -= 4
-                if Config.print_size:
-                    filename.print_size()
-                    spaceleft -= 7
-                if Config.print_git and self.has_gitrepo:
-                    filename.print_gitstatus()
-                    print(' ', end='')
-                    spaceleft -= 3
-                filename.print_name()
-                spaceleft -= len(filename.name) + 1
-                filename.print_postfix(spaceleft)
-                print()
+
+            if filename.name in Config.noprint_files:
+                continue
+
+            if Config.print_ownerpermissions:
+                filename.print_ownerpermissions()
+                spaceleft -= 3
+            if Config.print_grouppermissions:
+                filename.print_grouppermissions()
+                spaceleft -= 3
+            if Config.print_ottherpermissions:
+                filename.print_otherspermissions()
+                spaceleft -= 3
+            if Config.print_ottherpermissions or Config.print_grouppermissions or Config.print_ownerpermissions:
+                print(' ', end = '')
+                spaceleft -= 1
+
+            if Config.print_size:
+                filename.print_size()
+                print(' ', end='')
+                spaceleft -= 6
+
+            if Config.print_git and self.has_gitrepo:
+                filename.print_gitstatus()
+                print(' ', end='')
+                spaceleft -= 3
+
+            filename.print_name()
+            spaceleft -= len(filename.name)
+
+            if Config.print_aftertext:
+                filename.print_aftertext(spaceleft)
+            print()
 
 if __name__ == "__main__":
     Files('.').print_files()
